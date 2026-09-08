@@ -18,7 +18,9 @@ add_library(
   src/solvers/svd_least_squares_solver.cpp
   src/solvers/three_swerve_kinematics.cpp
   src/solvers/four_swerve_kinematics.cpp)
+
 target_link_libraries(${PROJECT_NAME}_solvers PUBLIC Eigen3::Eigen)
+
 target_include_directories(
   ${PROJECT_NAME}_solvers
   PUBLIC
@@ -29,9 +31,14 @@ add_executable(
   three_swerve_kinematics_node
   src/three_swerve_kinematics_node.cpp
   src/three_swerve_kinematics_ros.cpp)
+
 target_link_libraries(three_swerve_kinematics_node ${PROJECT_NAME}_solvers)
-ament_target_dependencies(three_swerve_kinematics_node rclcpp sensor_msgs
-                          geometry_msgs angles actuator_msgs)
+
+ament_target_dependencies(
+  three_swerve_kinematics_node
+  rclcpp sensor_msgs
+  geometry_msgs angles actuator_msgs)
+
 target_include_directories(three_swerve_kinematics_node PRIVATE include)
 
 add_executable(
@@ -39,8 +46,11 @@ add_executable(
   src/four_swerve_kinematics_node.cpp
   src/four_swerve_kinematics_ros.cpp)
 target_link_libraries(four_swerve_kinematics_node ${PROJECT_NAME}_solvers)
-ament_target_dependencies(four_swerve_kinematics_node rclcpp sensor_msgs
-                          geometry_msgs angles actuator_msgs)
+
+ament_target_dependencies(
+  four_swerve_kinematics_node rclcpp sensor_msgs
+  geometry_msgs angles actuator_msgs)
+
 target_include_directories(four_swerve_kinematics_node PRIVATE include)
 
 install(DIRECTORY include/ DESTINATION include/)
@@ -56,57 +66,63 @@ install(
   RUNTIME DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
-  find_package(ament_cmake_cppcheck REQUIRED)
-  find_package(ament_cmake_cpplint REQUIRED)
-  find_package(ament_cmake_flake8 REQUIRED)
-  find_package(ament_cmake_gtest REQUIRED)
-  find_package(ament_cmake_pytest REQUIRED)
   find_package(ament_lint_auto REQUIRED)
 
-  ament_add_gtest(test_svd_least_squares_solver
-                  test/test_svd_least_squares_solver.cpp)
-  target_link_libraries(test_svd_least_squares_solver ${PROJECT_NAME}_solvers
-                        Eigen3::Eigen)
-  target_include_directories(test_svd_least_squares_solver PRIVATE include)
-
-  ament_add_gtest(test_three_swerve_kinematics
-                  test/test_three_swerve_kinematics.cpp)
-  target_link_libraries(test_three_swerve_kinematics ${PROJECT_NAME}_solvers
-                        Eigen3::Eigen)
-  target_include_directories(test_three_swerve_kinematics PRIVATE include)
-
-  ament_add_gtest(test_four_swerve_kinematics
-                  test/test_four_swerve_kinematics.cpp)
-  target_link_libraries(test_four_swerve_kinematics ${PROJECT_NAME}_solvers
-                        Eigen3::Eigen)
-  target_include_directories(test_four_swerve_kinematics PRIVATE include)
-
-  ament_add_pytest_test(test_launch_contract test/test_launch_contract.py)
-
-  # Register each configurable linter once because ament_lint_auto cannot pass these settings.
+  # Exclude linters that require package-specific configuration.
   list(APPEND AMENT_LINT_AUTO_EXCLUDE
-    ament_cmake_cppcheck
+    ament_cmake_clang_format
     ament_cmake_cpplint
-    ament_cmake_flake8)
-
-  ament_cppcheck(include src INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include")
-  # Jazzy skips Cppcheck 1.88 and 2.x unless this environment variable enables them.
-  set_tests_properties(
-    cppcheck PROPERTIES ENVIRONMENT "AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1")
-
-  ament_cpplint(
-    MAX_LINE_LENGTH 120
-    FILTERS
-      -whitespace/newline
-      -whitespace/forcolon
-      -build/include_order
-      -runtime/indentation_namespace
-      -legal/copyright)
-
-  ament_flake8(CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ament_flake8.ini")
+    ament_cmake_flake8
+    ament_cmake_cppcheck)
 
   # Register the remaining linters declared as test dependencies in package.xml.
   ament_lint_auto_find_test_dependencies()
+
+  find_package(ament_cmake_clang_format REQUIRED)
+
+  ament_clang_format(CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/.clang-format" include src test)
+
+  find_package(ament_cmake_cpplint REQUIRED)
+
+  ament_cpplint(
+    MAX_LINE_LENGTH
+    120
+    FILTERS
+    -whitespace/newline
+    -whitespace/forcolon
+    -build/include_order
+    -runtime/indentation_namespace
+    -legal/copyright)
+
+  find_package(ament_cmake_flake8 REQUIRED)
+
+  ament_flake8(CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ament_flake8.ini")
+
+  find_package(ament_cmake_cppcheck REQUIRED)
+
+  # Check only headers and source files.
+  # Some gtest macros such as TEST_F and TEST_P can produce cppcheck false positives in test
+  # sources.
+  ament_cppcheck(include src INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+  # ament_cppcheck skips cppcheck versions known to be slow unless this environment variable
+  # explicitly allows them.
+  set_tests_properties(
+    cppcheck PROPERTIES ENVIRONMENT "AMENT_CPPCHECK_ALLOW_SLOW_VERSIONS=1")
+
+  ament_add_gtest(test_svd_least_squares_solver test/test_svd_least_squares_solver.cpp)
+  target_link_libraries(test_svd_least_squares_solver ${PROJECT_NAME}_solvers Eigen3::Eigen)
+  target_include_directories(test_svd_least_squares_solver PRIVATE include)
+
+  ament_add_gtest(test_three_swerve_kinematics test/test_three_swerve_kinematics.cpp)
+  target_link_libraries(test_three_swerve_kinematics ${PROJECT_NAME}_solvers Eigen3::Eigen)
+  target_include_directories(test_three_swerve_kinematics PRIVATE include)
+
+  ament_add_gtest(test_four_swerve_kinematics test/test_four_swerve_kinematics.cpp)
+  target_link_libraries(test_four_swerve_kinematics ${PROJECT_NAME}_solvers Eigen3::Eigen)
+  target_include_directories(test_four_swerve_kinematics PRIVATE include)
+
+  ament_add_pytest_test(test_launch_contract test/test_launch_contract.py)
 endif()
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
